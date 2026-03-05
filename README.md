@@ -195,6 +195,48 @@ Integrations are optional — the CRM works fully without them.
 | `npm run db:reset` | Reset database and reseed |
 | `npm run db:reset:hrt` | Reset database with HRT demo data |
 
+## Backups & Updates
+
+### Backup
+
+```bash
+# One-time backup
+./scripts/backup.sh
+
+# Backups are saved to ./backups/ with timestamps
+# Keeps the last 30 automatically
+```
+
+### Scheduled Backups (cron)
+
+Run daily at 2am:
+
+```bash
+crontab -e
+# Add this line (adjust the path):
+0 2 * * * cd /path/to/bright-crm && ./scripts/backup.sh >> /var/log/bright-crm-backup.log 2>&1
+```
+
+### Update
+
+Pulls latest code, backs up the database first, then rebuilds:
+
+```bash
+./scripts/update.sh
+```
+
+### Restore
+
+```bash
+# List available backups
+./scripts/restore.sh
+
+# Restore a specific backup
+./scripts/restore.sh backups/bright-crm_2026-03-05_02-00-00.db
+```
+
+All three scripts work with both Docker and local installs.
+
 ## Switching to Postgres
 
 Change `DATABASE_URL` in `.env`:
