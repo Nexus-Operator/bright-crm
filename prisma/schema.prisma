@@ -1,0 +1,211 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String    @id @default(cuid())
+  name           String
+  email          String    @unique
+  hashedPassword String
+  role           String    @default("user") // admin, user
+  avatar         String?
+  onboarded      Boolean   @default(false)
+  industry       String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  leads        Lead[]
+  contacts     Contact[]
+  accounts     Account[]
+  deals        Deal[]
+  activities   Activity[]
+  notes        Note[]
+  integrations Integration[]
+}
+
+model Integration {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider     String    // "google", "twilio"
+  accessToken  String?
+  refreshToken String?
+  tokenExpiry  DateTime?
+  email        String?   // Connected email for Google
+  config       String?   // JSON string for provider-specific config
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([userId, provider])
+}
+
+model Lead {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  company     String?
+  title       String?
+  status      String   @default("New") // New, Contacted, Qualified, Unqualified, Converted
+  source      String?  // Web, Phone, Referral, Partner, Other
+  rating      String?  // Hot, Warm, Cold
+  address     String?
+  city        String?
+  state       String?
+  zip         String?
+  country     String?
+  description String?
+  ownerId     String?
+  owner       User?    @relation(fields: [ownerId], references: [id])
+  convertedContactId String?
+  convertedAccountId String?
+  convertedDealId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  activities  Activity[]
+  notes       Note[]
+}
+
+model Contact {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String?
+  phone       String?
+  mobile      String?
+  title       String?
+  department  String?
+  accountId   String?
+  account     Account? @relation(fields: [accountId], references: [id])
+  address     String?
+  city        String?
+  state       String?
+  zip         String?
+  country     String?
+  description String?
+  ownerId     String?
+  owner       User?    @relation(fields: [ownerId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deals       Deal[]
+  activities  Activity[]
+  notes       Note[]
+}
+
+model Account {
+  id            String   @id @default(cuid())
+  name          String
+  industry      String?
+  type          String?  // Prospect, Customer, Partner, Vendor, Other
+  website       String?
+  phone         String?
+  address       String?
+  city          String?
+  state         String?
+  zip           String?
+  country       String?
+  description   String?
+  employees     Int?
+  annualRevenue Float?
+  ownerId       String?
+  owner         User?    @relation(fields: [ownerId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  contacts      Contact[]
+  deals         Deal[]
+  activities    Activity[]
+  notes         Note[]
+}
+
+model Pipeline {
+  id        String   @id @default(cuid())
+  name      String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  stages    Stage[]
+  deals     Deal[]
+}
+
+model Stage {
+  id          String   @id @default(cuid())
+  name        String
+  pipelineId  String
+  pipeline    Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  order       Int
+  probability Int      @default(0) // 0-100
+  color       String   @default("#3B82F6")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deals       Deal[]
+}
+
+model Deal {
+  id          String   @id @default(cuid())
+  name        String
+  amount      Float?
+  closeDate   DateTime?
+  probability Int?
+  type        String?  // New Business, Existing Business
+  source      String?
+  description String?
+  stageId     String
+  stage       Stage    @relation(fields: [stageId], references: [id])
+  pipelineId  String
+  pipeline    Pipeline @relation(fields: [pipelineId], references: [id])
+  accountId   String?
+  account     Account? @relation(fields: [accountId], references: [id])
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id])
+  ownerId     String?
+  owner       User?    @relation(fields: [ownerId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  activities  Activity[]
+  notes       Note[]
+}
+
+model Activity {
+  id            String   @id @default(cuid())
+  type          String   // task, call, email, meeting, note
+  subject       String
+  description   String?
+  status        String   @default("Open") // Open, Completed, Cancelled
+  dueDate       DateTime?
+  priority      String?  // High, Medium, Low
+  leadId        String?
+  lead          Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  contactId     String?
+  contact       Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  accountId     String?
+  account       Account? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  dealId        String?
+  deal          Deal?    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  ownerId       String?
+  owner         User?    @relation(fields: [ownerId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Note {
+  id            String   @id @default(cuid())
+  body          String
+  leadId        String?
+  lead          Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  contactId     String?
+  contact       Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  accountId     String?
+  account       Account? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  dealId        String?
+  deal          Deal?    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  ownerId       String?
+  owner         User?    @relation(fields: [ownerId], references: [id])
+}
