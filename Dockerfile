@@ -4,8 +4,8 @@ FROM node:20-alpine AS base
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-# Avoid running postinstall before prisma/schema.prisma is present (postinstall runs `prisma generate`).
-RUN npm ci --ignore-scripts
+COPY prisma ./prisma
+RUN npm ci
 
 # --- Build ---
 FROM base AS builder
@@ -13,7 +13,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Ensure public/ exists so the production image COPY doesn't fail even if repo has no public assets.
+# Ensure public/ exists so the production image COPY doesn't fail
 RUN mkdir -p public
 
 # Generate Prisma client
@@ -41,15 +41,12 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
-# Copy runtime deps (standalone output doesn't always include every required dependency)
-COPY --from=builder /app/node_modules ./node_modules
-
 # Copy Prisma schema and client artifacts
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-# Create data directory for SQLite (perms fixed at runtime too)
+# Create data directory for SQLite (perms fixed at runtime by entrypoint)
 RUN mkdir -p /app/data
 
 # Entrypoint to fix perms then drop privileges

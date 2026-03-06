@@ -27,6 +27,9 @@ services:
       - AUTH_TRUST_HOST=true
     volumes:
       - crm-data:/app/data
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
 volumes:
